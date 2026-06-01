@@ -9,13 +9,25 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Ensure Alembic migrations are applied before the application registers routes
+try:
+    from alembic.config import Config as AlembicConfig
+    from alembic import command as alembic_command
+    alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), 'alembic.ini'))
+    # Explicitly set script_location to backend/migrations
+    alembic_cfg.set_main_option('script_location', os.path.join(os.path.dirname(__file__), 'migrations'))
+    alembic_command.upgrade(alembic_cfg, 'head')
+    print('[Startup] Alembic migrations applied (upgrade head).')
+except Exception as _e:
+    print(f'[Startup] Alembic upgrade head failed: {_e}')
+
 from db.database import get_db, create_all_tables, async_session
 from simulation.scenarios import load_scenario
 from simulation.data_generator import simulate_realtime_update
 from websocket.manager import manager
 from api.routes import sos, map_data, rescue_teams, alerts
 from api.routes.live_data import router as live_data_router
-from config import APP_HOST, APP_PORT, DEMO_MODE, WEBSOCKET_REFRESH_INTERVAL
+from config import APP_HOST, APP_PORT, DEMO_MODE, WEBSOCKET_REFRESH_INTERVAL, PRODUCTION_MODE
 
 # Initialize background scheduler for real-time simulated updates
 scheduler = AsyncIOScheduler()
@@ -34,7 +46,7 @@ async def lifespan(app: FastAPI):
     print("[FastAPI Startup] Bootstrapping SQLite database schema...")
     await create_all_tables()
     
-    # 2. Load active scenario (default: Wayanad Kerala Landslides)
+    # 2. Load active scenario (default: Wayanad Kerala Landslides) only in demo mode
     if DEMO_MODE:
         async with async_session() as db_session:
             try:
@@ -42,10 +54,51 @@ async def lifespan(app: FastAPI):
                 await load_scenario("wayanad", db_session)
             except Exception as e:
                 print(f"[FastAPI Startup ERROR] Failed to load wayanad scenario: {e}")
-                
+
     # 3. Initialize scheduler background tasks
-    print(f"[FastAPI Startup] Starting background simulation ticks (Interval: {WEBSOCKET_REFRESH_INTERVAL}s)...")
-    scheduler.add_job(tick_simulation_job, 'interval', seconds=WEBSOCKET_REFRESH_INTERVAL)
+    if DEMO_MODE:
+        print(f"[FastAPI Startup] Starting background simulation ticks (Interval: {WEBSOCKET_REFRESH_INTERVAL}s)...")
+        scheduler.add_job(tick_simulation_job, 'interval', seconds=WEBSOCKET_REFRESH_INTERVAL)
+    else:
+        print("[FastAPI Startup] Production mode enabled — starting real data pollers...")
+
+        # Import real pollers lazily to avoid circular imports during startup
+        try:
+            from data.real_data_poller import (
+                poll_twitter_sos,
+                poll_gdacs_disasters,
+                refresh_opencellid_towers,
+                auto_satellite_check,
+            )
+        except Exception as e:
+            print(f"[Startup] Failed to import real_data_poller: {e}")
+            # Still start scheduler so other jobs (if any) can run
+
+        async def real_twitter_poll():
+            try:
+                count = await poll_twitter_sos()
+                if count and count > 0:
+                    print(f"[RealData] Ingested {count} real SOS tweets")
+            except Exception as e:
+                print(f"[RealData] Twitter poll error: {e}")
+
+        async def real_gdacs_poll():
+            try:
+                events = await poll_gdacs_disasters()
+                if events:
+                    print(f"[RealData] {len(events)} active South-Asia events from GDACS")
+            except Exception as e:
+                print(f"[RealData] GDACS poll error: {e}")
+
+        # Poll every 5 minutes for tweets
+        scheduler.add_job(real_twitter_poll, 'interval', minutes=5)
+        # Poll GDACS every 30 minutes
+        scheduler.add_job(real_gdacs_poll, 'interval', minutes=30)
+        # Check satellite imagery every 6 hours
+        scheduler.add_job(auto_satellite_check, 'interval', hours=6)
+        # Refresh OpenCelliD towers once per day
+        scheduler.add_job(refresh_opencellid_towers, 'interval', hours=24)
+
     scheduler.start()
     
     yield
@@ -84,6 +137,10 @@ async def api_load_scenario(scenario_id: str, db: AsyncSession = Depends(get_db)
     Triggers scenario switching on the fly.
     Clears all logs and loads either Kerala landslide, Assam, or Bihar floods.
     """
+    # DISABLED IN PRODUCTION
+    if PRODUCTION_MODE:
+        raise HTTPException(status_code=410, detail="Cannot load demo scenarios in production mode. Simulation endpoints disabled.")
+
     try:
         scenario = await load_scenario(scenario_id, db)
         
@@ -138,6 +195,7 @@ async def health_check():
         "status": "ok",
         "version": "1.0.0",
         "demo_mode": DEMO_MODE,
+        "production_mode": PRODUCTION_MODE,
         "active_scheduler": scheduler.running
     }
 

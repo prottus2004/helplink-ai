@@ -14,6 +14,9 @@ from ai.nlp_engine import NLPEngine
 from websocket.manager import manager
 from api.routes.alerts import get_operations_summary
 
+# When running in production, block all fake/demo generation
+from config import PRODUCTION_MODE
+
 fake = Faker('en_IN')  # Indian locale Faker
 nlp_engine = NLPEngine()
 
@@ -60,6 +63,7 @@ async def generate_random_sos(scenario_id: str, center_lat: float, center_lng: f
     signal = SOSSignal(
         source=tpl_info["src"],
         raw_message=message,
+        data_source="SIMULATION",
         language_detected=analysis["language_detected"],
         language_confidence=analysis["language_confidence"],
         has_survivor_signal=analysis["has_survivor_signal"],
@@ -87,6 +91,11 @@ async def simulate_realtime_update(db: AsyncSession):
     3. Arrives teams to 'on_ground' state when close, and graduates them to 'available' when done.
     4. Computes operations summaries and broadcasts events via WebSockets.
     """
+    # Block simulation in production mode
+    if PRODUCTION_MODE:
+        print("[BLOCKED] Fake SOS generation disabled in production mode.")
+        return
+
     try:
         # 1. Fetch active scenario
         stmt_scen = select(DemoScenario).where(DemoScenario.is_active == True)

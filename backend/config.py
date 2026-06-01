@@ -4,11 +4,33 @@ from dotenv import load_dotenv
 # Load environment variables if available
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./helplink.db")
+_raw_db = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./helplink.db")
+
+# Normalize DATABASE_URL for async usage in the application. If a plain
+# `postgresql://` URL is provided (e.g., Railway), convert it to the
+# asyncpg dialect `postgresql+asyncpg://`. Leave sqlite URLs using
+# `aiosqlite` as-is for the async engine.
+if _raw_db.startswith("postgresql://"):
+	# convert to asyncpg driver
+	DATABASE_URL = _raw_db.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif _raw_db.startswith("postgres://"):
+	# handle short alias
+	DATABASE_URL = _raw_db.replace("postgres://", "postgresql+asyncpg://", 1)
+else:
+	DATABASE_URL = _raw_db
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("APP_PORT", 8000))
 WEBSOCKET_REFRESH_INTERVAL = int(os.getenv("WEBSOCKET_REFRESH_INTERVAL", 10))  # seconds
-DEMO_MODE = os.getenv("DEMO_MODE", "True").lower() in ("true", "1", "yes")
+
+# DEMO_MODE is disabled by default for production deployments
+# Use environment variable DEMO_MODE=true only for local demo development
+DEMO_MODE = os.getenv("DEMO_MODE", "False").lower() in ("true", "1", "yes")
+
+# Production mode flag (explicit). When True:
+# - Simulation endpoints are disabled
+# - No fake SOS generation runs
+# - Real data pollers are scheduled
+PRODUCTION_MODE = os.getenv("PRODUCTION_MODE", "True").lower() in ("true", "1", "yes")
 
 # Default NLP_MODE to "keyword" to ensure 100% offline, zero-latency execution.
 # To activate the advanced HuggingFace multilingual transformer model, switch this to "transformer".

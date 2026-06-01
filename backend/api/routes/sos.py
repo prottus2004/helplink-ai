@@ -10,9 +10,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from db.database import get_db
 from db.models import SOSSignal
-from api.schemas import SOSSubmitRequest, SOSSignalResponse
+from api.schemas import SOSSubmitRequest, SOSSignalResponse, FormSOSRequest
 from ai.nlp_engine import NLPEngine
 from websocket.manager import manager
+from datetime import datetime, timezone
 
 router = APIRouter()
 nlp_engine = NLPEngine()
@@ -161,3 +162,61 @@ async def dismiss_sos(id: int, db: AsyncSession = Depends(get_db)):
     await manager.broadcast(ws_event)
     
     return {"status": "success", "message": f"SOS distress signal #{id} dismissed successfully."}
+
+
+@router.post("/submit-form")
+async def submit_from_form(payload: FormSOSRequest, db: AsyncSession = Depends(get_db)):
+    """Receives SOS from Google Form → Make.com webhook"""
+    try:
+        full_message = payload.raw_message
+        if payload.location_text:
+            full_message = f"{full_message}. Location: {payload.location_text}"
+        if payload.person_count:
+            full_message = f"{full_message}. {payload.person_count} people need help."
+
+        nlp_result = nlp_engine.classify_sos(full_message)
+
+        # If caller provided a language hint, respect it
+        if payload.language_hint and payload.language_hint.lower() != "auto":
+            nlp_result["language_detected"] = payload.language_hint
+
+        # Create DB record. latitude/longitude are not provided by Google Forms; store 0.0 and keep text in location_extracted
+        signal = SOSSignal(
+            source=payload.source,
+            raw_message=full_message,
+            language_detected=nlp_result.get("language_detected", "English"),
+            language_confidence=nlp_result.get("language_confidence", 0.0),
+            has_survivor_signal=True,
+            survivor_count_estimate=payload.person_count or nlp_result.get("survivor_count_estimate", 1),
+            location_extracted=payload.location_text or nlp_result.get("location_extracted", "Unknown"),
+            latitude=0.0,
+            longitude=0.0,
+            priority_score=nlp_result.get("priority_score", 0.0),
+            priority_level=nlp_result.get("priority_level", "LOW"),
+            data_source="Google Form (Public)",
+            is_verified=False,
+            created_at=datetime.now(timezone.utc),
+            processed_at=datetime.now(timezone.utc),
+        )
+
+        db.add(signal)
+        await db.commit()
+        await db.refresh(signal)
+
+        # Broadcast to all connected dashboards via WebSocket
+        await manager.broadcast({
+            "type": "new_sos",
+            "data": {
+                "id": signal.id,
+                "message": signal.raw_message[:80],
+                "priority": signal.priority_level,
+                "location": signal.location_extracted,
+                "source": "GOOGLE FORM — REAL SOS",
+            }
+        })
+
+        return {"status": "received", "signal_id": signal.id, "priority": signal.priority_level}
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Form submission failed: {e}")

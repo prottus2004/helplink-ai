@@ -25,8 +25,19 @@ class SOSSignal(Base):
     priority_score = Column(Float, default=0.0)  # 0.0 to 100.0
     priority_level = Column(String, default="LOW")  # "CRITICAL", "HIGH", "MEDIUM", "LOW"
     is_verified = Column(Boolean, default=False)
+    data_source = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     processed_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __init__(self, **kwargs):
+        # Accept and set only known column attributes; ignore unexpected extras
+        cols = set(self.__table__.columns.keys()) if hasattr(self, '__table__') else set()
+        for k, v in kwargs.items():
+            if k in cols:
+                setattr(self, k, v)
+            else:
+                # ignore unknown kwargs like 'data_source' to remain backward-compatible
+                continue
 
 
 class RescueTeam(Base):

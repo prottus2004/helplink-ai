@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from db.database import get_db
 from db.models import SOSSignal, RescueTeam, SatelliteZone, CellularAnomaly
 from api.schemas import OperationsSummary, TimelineEvent, SMSSimulateRequest
+from config import PRODUCTION_MODE
 
 router = APIRouter()
 
@@ -61,6 +62,11 @@ async def simulate_sms(payload: SMSSimulateRequest):
     """
     Simulates sending an SMS to field units or civilians using simulated Twilio gateway logs in the terminal.
     """
+    if PRODUCTION_MODE:
+        raise HTTPException(
+            status_code=410,
+            detail="SMS simulation disabled. Use real SMS webhook."
+        )
     phone = payload.phone_number.strip()
     msg = payload.message.strip()
     

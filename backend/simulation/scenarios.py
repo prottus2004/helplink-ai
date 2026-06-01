@@ -11,6 +11,7 @@ from db.models import SOSSignal, RescueTeam, SatelliteZone, CellularAnomaly, Dem
 from ai.nlp_engine import NLPEngine
 from ai.satellite_processor import SatelliteProcessor
 from ai.cellular_analyzer import CellularAnalyzer
+from config import PRODUCTION_MODE
 
 nlp_engine = NLPEngine()
 satellite_processor = SatelliteProcessor()
@@ -116,6 +117,10 @@ async def load_scenario(scenario_id: str, db: AsyncSession) -> DemoScenario:
     Clears all existing database transaction records and loads all static
     pre-loaded coordinates, NLP SOS messages, simulated SAR layers, and NDRF teams.
     """
+    if PRODUCTION_MODE:
+        raise ValueError(
+            "Cannot load demo scenarios in production mode. Only real data from live APIs is accepted."
+        )
     # 1. Clear database completely to prevent conflicts
     await db.execute(delete(SOSSignal))
     await db.execute(delete(RescueTeam))
@@ -219,6 +224,7 @@ async def load_scenario(scenario_id: str, db: AsyncSession) -> DemoScenario:
         signal = SOSSignal(
             source=item["src"],
             raw_message=item["msg"],
+            data_source="SIMULATION",
             language_detected=analysis["language_detected"],
             language_confidence=analysis["language_confidence"],
             has_survivor_signal=analysis["has_survivor_signal"],

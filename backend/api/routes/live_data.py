@@ -24,12 +24,31 @@ async def get_live_disasters():
             data = response.json()
 
         events = data.get("features", [])
+
+        # CORRECT — only flags events actually in India
+        INDIA_ISO3_CODES = {"IND"}
+        INDIA_ADJACENT_NAMES = {"india"}  # only exact match
+
+        def is_india_event(props: dict) -> bool:
+            """Returns True ONLY if the event is in India — not Sri Lanka, not Bangladesh"""
+            iso3 = props.get("iso3", "").upper()
+            country = props.get("country", "").lower().strip()
+            return iso3 in INDIA_ISO3_CODES or country in INDIA_ADJACENT_NAMES
+
+        # South Asia group for honest naming in responses
+        SOUTH_ASIA_ISO3 = {"IND", "LKA", "BGD", "NPL", "PAK"}
+
         india_events = []
+        south_asia_events = []
         all_events = []
 
         for event in events[:20]:
             props = event.get("properties", {})
             coords = event.get("geometry", {}).get("coordinates", [0, 0])
+
+            is_india = is_india_event(props)
+            iso3 = props.get("iso3", "").upper()
+            is_south_asia = iso3 in SOUTH_ASIA_ISO3
 
             entry = {
                 "id": props.get("eventid"),
@@ -42,19 +61,32 @@ async def get_live_disasters():
                 "date": props.get("fromdate", ""),
                 "affected": props.get("population", 0),
                 "source": "GDACS Live API",
-                "is_india": props.get("iso3", "") in {"IND", "BGD", "NPL", "LKA"},
+                "is_india": is_india,
             }
 
             all_events.append(entry)
-            if entry["is_india"]:
+            if is_india:
                 india_events.append(entry)
+            if is_south_asia:
+                south_asia_events.append(entry)
+
+        # After collecting all events, deduplicate by event ID
+        seen_ids = set()
+        unique_events = []
+        for event in all_events:
+            eid = event.get("id")
+            if eid not in seen_ids:
+                seen_ids.add(eid)
+                unique_events.append(event)
 
         return {
             "status": "live",
             "fetched_at": datetime.utcnow().isoformat(),
+            # Keep `india_events` for backward compatibility
             "india_events": india_events,
-            "global_events": all_events,
-            "total": len(all_events),
+            "south_asia_events": south_asia_events,
+            "global_events": unique_events,
+            "total": len(unique_events),
             "source": "https://www.gdacs.org",
         }
     except Exception as exc:

@@ -10,6 +10,7 @@ import ScenarioPanel from './components/Demo/ScenarioPanel';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useRescueData } from './hooks/useRescueData';
 import { useHelpLinkStore } from './store/useHelpLinkStore';
+import EmergencyReport from './pages/EmergencyReport';
 
 export default function App() {
   // Mount WebSocket Pipeline
@@ -76,6 +77,11 @@ export default function App() {
 
       </div>
     );
+  }
+
+  // Simple pathname-based routing for public emergency intake page
+  if (typeof window !== 'undefined' && (window.location.pathname === '/emergency' || window.location.pathname === '/emergency/')) {
+    return <EmergencyReport />
   }
 
   return (
