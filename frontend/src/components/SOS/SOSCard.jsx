@@ -99,6 +99,11 @@ export default function SOSCard({ signal }) {
         </div>
       </div>
 
+      {/* Data source attribution */}
+      <div className="text-[10px] text-gray-400 mt-2">
+        Data source: <span className="font-semibold text-gray-200">{signal.data_source || 'NLP Engine v1.0'}</span>
+      </div>
+
       {/* Dispatching / verification state actions */}
       <div className="flex flex-col gap-2 pt-1">
         {isDispatched ? (
