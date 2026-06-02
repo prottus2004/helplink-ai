@@ -2,7 +2,6 @@ fastapi==0.111.0
 uvicorn[standard]==0.29.0
 websockets==12.0
 sqlalchemy==2.0.30
-aiosqlite==0.20.0
 python-dotenv==1.0.1
 apscheduler==3.10.4
 numpy==1.26.4
@@ -19,4 +18,7 @@ pandas==2.2.2
 tweepy==4.14.0
 alembic==1.11.1
 psycopg2-binary==2.9.9
-asyncpg==0.27.0
+
+# asyncpg: installs on Linux/Mac. On Windows use: pip install aiosqlite only
+asyncpg==0.29.0
+aiosqlite==0.20.0

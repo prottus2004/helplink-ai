@@ -4,20 +4,17 @@ from dotenv import load_dotenv
 # Load environment variables if available
 load_dotenv()
 
-_raw_db = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./helplink.db")
+# Local dev uses SQLite (no asyncpg needed on Windows)
+# Railway sets DATABASE_URL automatically to postgresql://...
+_raw_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./helplink_dev.db")
 
-# Normalize DATABASE_URL for async usage in the application. If a plain
-# `postgresql://` URL is provided (e.g., Railway), convert it to the
-# asyncpg dialect `postgresql+asyncpg://`. Leave sqlite URLs using
-# `aiosqlite` as-is for the async engine.
-if _raw_db.startswith("postgresql://"):
-	# convert to asyncpg driver
-	DATABASE_URL = _raw_db.replace("postgresql://", "postgresql+asyncpg://", 1)
-elif _raw_db.startswith("postgres://"):
-	# handle short alias
-	DATABASE_URL = _raw_db.replace("postgres://", "postgresql+asyncpg://", 1)
+# SQLAlchemy async needs postgresql+asyncpg://, not postgresql://
+if _raw_url.startswith("postgresql://"):
+    DATABASE_URL = _raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif _raw_url.startswith("postgres://"):
+    DATABASE_URL = _raw_url.replace("postgres://", "postgresql+asyncpg://", 1)
 else:
-	DATABASE_URL = _raw_db
+    DATABASE_URL = _raw_url  # SQLite for local dev
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("APP_PORT", 8000))
 WEBSOCKET_REFRESH_INTERVAL = int(os.getenv("WEBSOCKET_REFRESH_INTERVAL", 10))  # seconds
