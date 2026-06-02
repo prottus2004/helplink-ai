@@ -7,7 +7,6 @@ import AlertFeed from './components/Dashboard/AlertFeed';
 import TeamTracker from './components/Dashboard/TeamTracker';
 import DemoController from './components/Demo/DemoController';
 import ScenarioPanel from './components/Demo/ScenarioPanel';
-import DisasterFeed from './components/Dashboard/DisasterFeed';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useRescueData } from './hooks/useRescueData';
 import { useHelpLinkStore } from './store/useHelpLinkStore';
@@ -106,9 +105,6 @@ export default function App() {
 
         {/* Column 4 (25%): Live Feeds, Unit Trackers, and Showcase tour controls */}
         <section className="lg:col-span-1 h-full min-h-0 flex flex-col gap-4">
-          <div className="flex-1 min-h-0">
-            <DisasterFeed />
-          </div>
           <div className="flex-1 min-h-0">
             <AlertFeed />
           </div>

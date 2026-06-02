@@ -7,8 +7,7 @@ router = APIRouter()
 
 GDACS_URL = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH"
 
-# South Asia ISO3 codes — includes India, Sri Lanka, Bangladesh,
-# Nepal, Pakistan, and Myanmar (flood-prone neighbours)
+# South Asia ISO3 codes — includes India + 5 neighbouring countries
 SOUTH_ASIA_ISO3 = {"IND", "LKA", "BGD", "NPL", "PAK", "MMR"}
 
 
@@ -29,38 +28,38 @@ async def get_live_disasters():
 
         events = data.get("features", [])
 
-        # Step 1: Build raw entries
-        raw_entries = []
+        # Build raw event list first
+        all_events = []
         for event in events[:20]:
             props = event.get("properties", {})
             coords = event.get("geometry", {}).get("coordinates", [0, 0])
             iso3 = props.get("iso3", "").upper()
 
-            raw_entries.append({
+            all_events.append({
                 "id": props.get("eventid"),
                 "type": props.get("eventtype"),
                 "name": props.get("name", "Unknown Event"),
                 "country": props.get("country", "Unknown"),
-                "iso3": iso3,
                 "alert": props.get("alertlevel", "Green"),
                 "lat": coords[1] if len(coords) > 1 else 0,
                 "lng": coords[0] if len(coords) > 0 else 0,
                 "date": props.get("fromdate", ""),
                 "affected": props.get("population", 0),
                 "source": "GDACS Live API",
+                "iso3": iso3,
                 "is_india": iso3 == "IND" or props.get("country", "").lower().strip() == "india",
             })
 
-        # Step 2: Deduplicate by event ID (before any filtering)
+        # Deduplicate by event ID
         seen_ids = set()
-        all_events = []
-        for event in raw_entries:
-            eid = event.get("id")
-            if eid and eid not in seen_ids:
-                seen_ids.add(eid)
-                all_events.append(event)
+        unique_events = []
+        for event in all_events:
+            if event["id"] not in seen_ids:
+                seen_ids.add(event["id"])
+                unique_events.append(event)
+        all_events = unique_events
 
-        # Step 3: Split into india_events and south_asia_events
+        # Build india_events and south_asia_events from the deduped list
         india_events = [e for e in all_events if e.get("iso3", "").upper() == "IND"
                         or e.get("country", "").lower() == "india"]
 
