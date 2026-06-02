@@ -8,7 +8,6 @@ export default function CommandHeader() {
   const [time, setTime] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [liveDisaster, setLiveDisaster] = useState(null);
-  const [southAsiaDisasters, setSouthAsiaDisasters] = useState([]);
 
   // Tick clock every second
   useEffect(() => {
@@ -19,14 +18,9 @@ export default function CommandHeader() {
   useEffect(() => {
     const fetchLiveDisaster = async () => {
       try {
-        const response = await fetch('/api/live/disasters');
+        const response = await fetch('/api/live/disaster-status');
         const data = await response.json();
-        setLiveDisaster({
-          active_india_disaster: (data.india_events || []).length > 0,
-          critical_count: (data.india_events || []).filter(e => e.alert === 'Orange' || e.alert === 'Red').length,
-          events: (data.india_events || []).slice(0, 3),
-        });
-        setSouthAsiaDisasters(data.south_asia_events || []);
+        setLiveDisaster(data);
       } catch (err) {
         console.warn('Failed to fetch live disaster status:', err);
       }
@@ -111,21 +105,6 @@ export default function CommandHeader() {
               }}
             >
               LIVE: {liveDisaster.critical_count} ACTIVE DISASTER(S) IN INDIA
-            </div>
-          )}
-          {southAsiaDisasters.length > 0 && (
-            <div
-              style={{
-                background: '#EFF6FF',
-                color: '#1E3A8A',
-                border: '1px solid #93C5FD',
-                borderRadius: 4,
-                padding: '3px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-              }}
-            >
-              SOUTH ASIA: {southAsiaDisasters.length} NEIGHBOURING COUNTRY EVENT(S)
             </div>
           )}
           <select
