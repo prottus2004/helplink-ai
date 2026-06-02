@@ -1,20 +1,19 @@
 import os
 from dotenv import load_dotenv
-
-# Load environment variables if available
 load_dotenv()
 
-# Local dev uses SQLite (no asyncpg needed on Windows)
-# Railway sets DATABASE_URL automatically to postgresql://...
-_raw_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./helplink_dev.db")
+_url = os.getenv("DATABASE_URL", "")
 
-# SQLAlchemy async needs postgresql+asyncpg://, not postgresql://
-if _raw_url.startswith("postgresql://"):
-    DATABASE_URL = _raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-elif _raw_url.startswith("postgres://"):
-    DATABASE_URL = _raw_url.replace("postgres://", "postgresql+asyncpg://", 1)
+# Railway injects RAILWAY_SERVICE_POSTGRES_URL as just a hostname — ignore it
+# Only use DATABASE_URL if it looks like a complete connection string
+if _url and "://" in _url:
+    DATABASE_URL = _url.replace("postgres://", "postgresql+asyncpg://", 1) \
+                       .replace("postgresql://", "postgresql+asyncpg://", 1)
 else:
-    DATABASE_URL = _raw_url  # SQLite for local dev
+    DATABASE_URL = "sqlite+aiosqlite:///./helplink.db"
+
+print(f"[Config] Using database: {DATABASE_URL[:40]}...")
+
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("APP_PORT", 8000))
 WEBSOCKET_REFRESH_INTERVAL = int(os.getenv("WEBSOCKET_REFRESH_INTERVAL", 10))  # seconds

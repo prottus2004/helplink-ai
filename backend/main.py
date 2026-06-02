@@ -9,18 +9,6 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Ensure Alembic migrations are applied before the application registers routes
-try:
-    from alembic.config import Config as AlembicConfig
-    from alembic import command as alembic_command
-    alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), 'alembic.ini'))
-    # Explicitly set script_location to backend/migrations
-    alembic_cfg.set_main_option('script_location', os.path.join(os.path.dirname(__file__), 'migrations'))
-    alembic_command.upgrade(alembic_cfg, 'head')
-    print('[Startup] Alembic migrations applied (upgrade head).')
-except Exception as _e:
-    print(f'[Startup] Alembic upgrade head failed: {_e}')
-
 from db.database import get_db, create_all_tables, async_session
 from simulation.scenarios import load_scenario
 from simulation.data_generator import simulate_realtime_update
@@ -45,6 +33,17 @@ async def lifespan(app: FastAPI):
     # 1. Start-up: Create all tables asynchronously
     print("[FastAPI Startup] Bootstrapping SQLite database schema...")
     await create_all_tables()
+    # 1b. Stamp Alembic to record current migration state (stamp only — never upgrade on fresh DB)
+    try:
+        from alembic.config import Config as AlembicConfig
+        from alembic import command as alembic_command
+        cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+        cfg.set_main_option("script_location",
+                            os.path.join(os.path.dirname(__file__), "migrations"))
+        alembic_command.stamp(cfg, "head")
+        print("[FastAPI Startup] Alembic stamp applied")
+    except Exception as e:
+        print(f"[FastAPI Startup] Alembic stamp skipped: {e}")
     
     # 2. Load active scenario (default: Wayanad Kerala Landslides) only in demo mode
     if DEMO_MODE:
