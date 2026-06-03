@@ -1,4 +1,1 @@
-# Local Windows development requirements
-# Install with: pip install -r requirements-dev.txt
-# This pulls in requirements.txt but skips asyncpg (not needed on Windows)
 -r requirements.txt

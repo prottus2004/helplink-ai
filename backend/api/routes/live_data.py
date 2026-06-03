@@ -7,9 +7,6 @@ router = APIRouter()
 
 GDACS_URL = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH"
 
-# South Asia ISO3 codes — includes India + 5 neighbouring countries
-SOUTH_ASIA_ISO3 = {"IND", "LKA", "BGD", "NPL", "PAK", "MMR"}
-
 
 @router.get("/api/live/disasters")
 async def get_live_disasters():
@@ -28,14 +25,32 @@ async def get_live_disasters():
 
         events = data.get("features", [])
 
-        # Build raw event list first
+        # CORRECT — only flags events actually in India
+        INDIA_ISO3_CODES = {"IND"}
+        INDIA_ADJACENT_NAMES = {"india"}  # only exact match
+
+        def is_india_event(props: dict) -> bool:
+            """Returns True ONLY if the event is in India — not Sri Lanka, not Bangladesh"""
+            iso3 = props.get("iso3", "").upper()
+            country = props.get("country", "").lower().strip()
+            return iso3 in INDIA_ISO3_CODES or country in INDIA_ADJACENT_NAMES
+
+        # South Asia group for honest naming in responses
+        SOUTH_ASIA_ISO3 = {"IND", "LKA", "BGD", "NPL", "PAK"}
+
+        india_events = []
+        south_asia_events = []
         all_events = []
+
         for event in events[:20]:
             props = event.get("properties", {})
             coords = event.get("geometry", {}).get("coordinates", [0, 0])
-            iso3 = props.get("iso3", "").upper()
 
-            all_events.append({
+            is_india = is_india_event(props)
+            iso3 = props.get("iso3", "").upper()
+            is_south_asia = iso3 in SOUTH_ASIA_ISO3
+
+            entry = {
                 "id": props.get("eventid"),
                 "type": props.get("eventtype"),
                 "name": props.get("name", "Unknown Event"),
@@ -46,34 +61,32 @@ async def get_live_disasters():
                 "date": props.get("fromdate", ""),
                 "affected": props.get("population", 0),
                 "source": "GDACS Live API",
-                "iso3": iso3,
-                "is_india": iso3 == "IND" or props.get("country", "").lower().strip() == "india",
-            })
+                "is_india": is_india,
+            }
 
-        # Deduplicate by event ID
+            all_events.append(entry)
+            if is_india:
+                india_events.append(entry)
+            if is_south_asia:
+                south_asia_events.append(entry)
+
+        # After collecting all events, deduplicate by event ID
         seen_ids = set()
         unique_events = []
         for event in all_events:
-            if event["id"] not in seen_ids:
-                seen_ids.add(event["id"])
+            eid = event.get("id")
+            if eid not in seen_ids:
+                seen_ids.add(eid)
                 unique_events.append(event)
-        all_events = unique_events
-
-        # Build india_events and south_asia_events from the deduped list
-        india_events = [e for e in all_events if e.get("iso3", "").upper() == "IND"
-                        or e.get("country", "").lower() == "india"]
-
-        south_asia_events = [e for e in all_events
-                             if e.get("iso3", "").upper() in SOUTH_ASIA_ISO3
-                             and e not in india_events]
 
         return {
             "status": "live",
             "fetched_at": datetime.utcnow().isoformat(),
+            # Keep `india_events` for backward compatibility
             "india_events": india_events,
             "south_asia_events": south_asia_events,
-            "global_events": all_events,
-            "total": len(all_events),
+            "global_events": unique_events,
+            "total": len(unique_events),
             "source": "https://www.gdacs.org",
         }
     except Exception as exc:
@@ -81,7 +94,6 @@ async def get_live_disasters():
             "status": "error",
             "message": str(exc),
             "india_events": [],
-            "south_asia_events": [],
             "global_events": [],
             "source": "GDACS (unreachable)",
         }
