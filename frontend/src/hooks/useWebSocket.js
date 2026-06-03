@@ -23,11 +23,17 @@ export const useWebSocket = () => {
       clearTimeout(reconnectTimeout.current);
     }
 
-    // Construct WebSocket URL based on environment
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host; // includes port in dev, not in production
-    const wsUrl = `${protocol}//${host}/ws`;
-    
+    // Smart URL: uses environment variable if set, otherwise uses relative path
+    // In local dev, Vite proxy forwards /ws to localhost:8000
+    const getWebSocketUrl = () => {
+      if (import.meta.env.VITE_WS_URL) {
+        return import.meta.env.VITE_WS_URL;
+      }
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${protocol}//${window.location.host}/ws`;
+    };
+
+    const wsUrl = getWebSocketUrl();
     console.log(`[WebSocket] Connecting to ${wsUrl}...`);
     ws.current = new WebSocket(wsUrl);
 
