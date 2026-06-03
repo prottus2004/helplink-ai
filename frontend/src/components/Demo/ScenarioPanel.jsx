@@ -4,6 +4,19 @@ import axios from 'axios';
 export default function ScenarioPanel() {
   const [disasterData, setDisasterData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [dataStatus, setDataStatus] = useState(null);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await axios.get('/api/live/data-status');
+        setDataStatus(res.data);
+      } catch (err) {
+        console.error('[API] Failed to fetch data status:', err);
+      }
+    };
+    fetchStatus();
+  }, []);
 
   const fetchLiveDisasters = async () => {
     setLoading(true);
@@ -130,21 +143,29 @@ export default function ScenarioPanel() {
           </div>
           <div className="flex items-center justify-between text-[10px] text-gray-400">
             <span>Twitter/X SOS:</span>
-            <span className="text-amber-400 font-bold">{
-              import.meta.env.VITE_TWITTER_TOKEN ? 'CONFIGURED' : 'NO KEY'
-            }</span>
+            <span className={`font-bold ${
+              dataStatus?.tweets === 'real' || dataStatus?.tweets === 'live'
+                ? 'text-green-400' : dataStatus?.tweets === 'simulated'
+                ? 'text-amber-400' : 'text-gray-600'
+            }`}>
+              {dataStatus?.tweets === 'real' || dataStatus?.tweets === 'live' ? 'LIVE' : dataStatus?.tweets === 'simulated' ? 'DEMO' : 'OFF'}
+            </span>
           </div>
           <div className="flex items-center justify-between text-[10px] text-gray-400">
             <span>OpenCelliD Towers:</span>
-            <span className="text-amber-400 font-bold">{
-              import.meta.env.VITE_OPENCELLID_KEY ? 'CONFIGURED' : 'NO KEY'
-            }</span>
+            <span className={`font-bold ${
+              dataStatus?.towers === 'real' ? 'text-green-400' : dataStatus?.towers === 'simulated' ? 'text-amber-400' : 'text-gray-600'
+            }`}>
+              {dataStatus?.towers === 'real' ? 'LIVE' : dataStatus?.towers === 'simulated' ? 'DEMO' : 'OFF'}
+            </span>
           </div>
           <div className="flex items-center justify-between text-[10px] text-gray-400">
             <span>Copernicus SAR:</span>
-            <span className="text-amber-400 font-bold">{
-              import.meta.env.VITE_COPERNICUS_USER ? 'CONFIGURED' : 'NO KEY'
-            }</span>
+            <span className={`font-bold ${
+              dataStatus?.satellite === 'real' ? 'text-green-400' : dataStatus?.satellite === 'simulated' ? 'text-amber-400' : 'text-gray-600'
+            }`}>
+              {dataStatus?.satellite === 'real' ? 'LIVE' : dataStatus?.satellite === 'simulated' ? 'DEMO' : 'OFF'}
+            </span>
           </div>
         </div>
         <button

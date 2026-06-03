@@ -149,31 +149,6 @@ export const useRescueData = () => {
     }
   };
 
-  const simulateSMSAlert = async (phoneNumber, message) => {
-    try {
-      const res = await axios.post(`${API_BASE}/alerts/sms-simulate`, {
-        phone_number: phoneNumber,
-        message
-      });
-      return res.data;
-    } catch (err) {
-      console.error('[API ERROR] SMS simulation failed:', err);
-      throw err;
-    }
-  };
-
-  const triggerLoadScenario = async (scenarioId) => {
-    try {
-      const res = await axios.post(`${API_BASE}/demo/load-scenario/${scenarioId}`);
-      // Refresh all local variables to represent new disaster site
-      await fetchAllData();
-      return res.data;
-    } catch (err) {
-      console.error(`[API ERROR] Failed to load scenario '${scenarioId}':`, err);
-      throw err;
-    }
-  };
-
   return {
     fetchAllData,
     fetchSummary,
@@ -186,8 +161,6 @@ export const useRescueData = () => {
     submitManualSOS,
     verifySOSSignal,
     dismissSOSSignal,
-    simulateSMSAlert,
-    triggerLoadScenario,
     setFocusedLocation
   };
 };

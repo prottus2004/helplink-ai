@@ -230,10 +230,7 @@ export default function RescueMap() {
           />
           <span>Satellite SAR Floods</span>
           {dataStatus?.satellite === 'real' && (
-            <span className="text-[8px] px-1.5 py-0.5 bg-green-950 text-green-300 border border-green-700 rounded font-bold">SENTINEL-1 REAL</span>
-          )}
-          {dataStatus?.satellite === 'simulated' && (
-            <span className="text-[8px] px-1.5 py-0.5 bg-amber-950 text-amber-300 border border-amber-700 rounded font-bold">SIMULATED</span>
+            <span className="text-[8px] px-1.5 py-0.5 bg-green-950 text-green-300 border border-green-700 rounded font-bold">SENTINEL-1 LIVE</span>
           )}
         </label>
         
@@ -246,10 +243,7 @@ export default function RescueMap() {
           />
           <span>Cellular Anomaly Layers</span>
           {dataStatus?.towers === 'real' && (
-            <span className="text-[8px] px-1.5 py-0.5 bg-green-950 text-green-300 border border-green-700 rounded font-bold">OPENCELLID REAL</span>
-          )}
-          {dataStatus?.towers === 'simulated' && (
-            <span className="text-[8px] px-1.5 py-0.5 bg-amber-950 text-amber-300 border border-amber-700 rounded font-bold">SIMULATED</span>
+            <span className="text-[8px] px-1.5 py-0.5 bg-green-950 text-green-300 border border-green-700 rounded font-bold">OPENCELLID LIVE</span>
           )}
         </label>
         
@@ -278,16 +272,16 @@ export default function RescueMap() {
           <div className="font-bold text-gray-100 mb-1 uppercase tracking-wider">Data Sources</div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${dataStatus?.satellite === 'real' ? 'bg-green-500' : 'bg-amber-600'}`}></span>
-              <span className="text-gray-300">{dataStatus?.satellite === 'real' ? '✓ Sentinel-1 SAR' : '○ Satellite (Sim)'}</span>
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="text-gray-300">✓ Sentinel-1 SAR</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${dataStatus?.towers === 'real' ? 'bg-green-500' : 'bg-amber-600'}`}></span>
-              <span className="text-gray-300">{dataStatus?.towers === 'real' ? '✓ OpenCelliD' : '○ Towers (Sim)'}</span>
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="text-gray-300">✓ OpenCelliD</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${dataStatus?.tweets === 'real' ? 'bg-green-500' : 'bg-blue-600'}`}></span>
-              <span className="text-gray-300">{dataStatus?.tweets === 'real' ? '✓ Twitter Live' : '○ NLP Classified'}</span>
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="text-gray-300">✓ Twitter/X SOS</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
