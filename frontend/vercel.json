@@ -3,6 +3,23 @@
     {
       "source": "/api/(.*)",
       "destination": "https://helplink-backend-production.up.railway.app/api/$1"
+    },
+    {
+      "source": "/ws/(.*)",
+      "destination": "https://helplink-backend-production.up.railway.app/ws/$1"
+    },
+    {
+      "source": "/health",
+      "destination": "https://helplink-backend-production.up.railway.app/health"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/ws/(.*)",
+      "headers": [
+        { "key": "Upgrade", "value": "websocket" },
+        { "key": "Connection", "value": "upgrade" }
+      ]
     }
   ]
 }

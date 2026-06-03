@@ -1,0 +1,12 @@
+[build]
+ix = "python"
+version = "3.11"
+
+[start]
+cmd = "uvicorn main:app --host 0.0.0.0 --port ${PORT}"
+
+[pkgs]
+apt = ["gcc", "g++", "libpq-dev"]
+
+[pip]
+requirements = ["backend/requirements.txt"]

@@ -1,0 +1,10 @@
+.git/
+node_modules/
+*.md
+!README.md
+.env
+.vscode/
+frontend/
+__pycache__/
+*.pyc
+.DS_Store
