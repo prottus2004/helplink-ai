@@ -10,8 +10,6 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from db.database import get_db, create_all_tables, async_session
-from simulation.scenarios import load_scenario
-from simulation.data_generator import simulate_realtime_update
 from websocket.manager import manager
 from api.routes import sos, map_data, rescue_teams, alerts
 from api.routes.live_data import router as live_data_router
@@ -22,6 +20,7 @@ scheduler = AsyncIOScheduler()
 
 async def tick_simulation_job():
     """Wrapper to run real-time updates inside an active DB transaction"""
+    from simulation.data_generator import simulate_realtime_update
     async with async_session() as db_session:
         try:
             await simulate_realtime_update(db_session)
@@ -47,6 +46,7 @@ async def lifespan(app: FastAPI):
     
     # 2. Load active scenario (default: Wayanad Kerala Landslides) only in demo mode
     if DEMO_MODE:
+        from simulation.scenarios import load_scenario
         async with async_session() as db_session:
             try:
                 print("[FastAPI Startup] Pre-loading default scenario 'wayanad'...")
