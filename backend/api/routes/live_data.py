@@ -101,19 +101,32 @@ async def get_live_disasters():
 
 @router.get("/api/live/disaster-status")
 async def get_disaster_status():
-    """Quick check: active India-region disasters and critical count."""
+    """
+    Returns India disaster count — reads from the same GDACS source
+    as /api/live/disasters so both endpoints are always in sync.
+    """
     try:
-        result = await get_live_disasters()
-        india_events = result.get("india_events", [])
-        critical = [event for event in india_events if event.get("alert") in {"Orange", "Red"}]
+        full_data = await get_live_disasters()
+        india_events = full_data.get("india_events", [])
+        critical = [e for e in india_events if e.get("alert") in ["Orange", "Red"]]
+
         return {
             "active_india_disaster": len(india_events) > 0,
             "critical_count": len(critical),
-            "events": india_events[:3],
+            "total_india_count": len(india_events),
+            "events": india_events[:5],
             "last_check": datetime.utcnow().isoformat(),
+            "source": "GDACS Live API (synced)"
         }
-    except Exception:
-        return {"active_india_disaster": False, "critical_count": 0}
+    except Exception as e:
+        return {
+            "active_india_disaster": False,
+            "critical_count": 0,
+            "total_india_count": 0,
+            "events": [],
+            "last_check": datetime.utcnow().isoformat(),
+            "source": "GDACS (error)"
+        }
 
 
 @router.get("/api/live/data-status")

@@ -166,34 +166,32 @@ async def dismiss_sos(id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/submit-form")
 async def submit_from_form(payload: FormSOSRequest, db: AsyncSession = Depends(get_db)):
-    """Receives SOS from Google Form → Make.com webhook"""
+    """Receives SOS from Google Form via Make.com webhook"""
     try:
-        full_message = payload.raw_message
-        if payload.location_text:
-            full_message = f"{full_message}. Location: {payload.location_text}"
-        if payload.person_count:
+        full_message = payload.message
+        if payload.location:
+            full_message = f"{full_message}. Location: {payload.location}"
+        if payload.person_count and payload.person_count > 1:
             full_message = f"{full_message}. {payload.person_count} people need help."
 
         nlp_result = nlp_engine.classify_sos(full_message)
 
-        # If caller provided a language hint, respect it
-        if payload.language_hint and payload.language_hint.lower() != "auto":
-            nlp_result["language_detected"] = payload.language_hint
+        if payload.language and payload.language.lower() != "auto":
+            nlp_result["language_detected"] = payload.language
 
-        # Create DB record. latitude/longitude are not provided by Google Forms; store 0.0 and keep text in location_extracted
         signal = SOSSignal(
-            source=payload.source,
+            source="google_form",
             raw_message=full_message,
             language_detected=nlp_result.get("language_detected", "English"),
-            language_confidence=nlp_result.get("language_confidence", 0.0),
+            language_confidence=nlp_result.get("language_confidence", 0.9),
             has_survivor_signal=True,
             survivor_count_estimate=payload.person_count or nlp_result.get("survivor_count_estimate", 1),
-            location_extracted=payload.location_text or nlp_result.get("location_extracted", "Unknown"),
+            location_extracted=payload.location or nlp_result.get("location_extracted", "Unknown"),
             latitude=0.0,
             longitude=0.0,
-            priority_score=nlp_result.get("priority_score", 0.0),
-            priority_level=nlp_result.get("priority_level", "LOW"),
-            data_source="Google Form (Public)",
+            priority_score=max(nlp_result.get("priority_score", 50), 50),
+            priority_level=nlp_result.get("priority_level", "HIGH"),
+            data_source="Google Form (Public SOS)",
             is_verified=False,
             created_at=datetime.now(timezone.utc),
             processed_at=datetime.now(timezone.utc),
@@ -203,20 +201,39 @@ async def submit_from_form(payload: FormSOSRequest, db: AsyncSession = Depends(g
         await db.commit()
         await db.refresh(signal)
 
-        # Broadcast to all connected dashboards via WebSocket
         await manager.broadcast({
             "type": "new_sos",
             "data": {
                 "id": signal.id,
-                "message": signal.raw_message[:80],
+                "message": signal.raw_message[:100],
                 "priority": signal.priority_level,
+                "priority_score": signal.priority_score,
                 "location": signal.location_extracted,
+                "language": signal.language_detected,
+                "survivors": signal.survivor_count_estimate,
                 "source": "GOOGLE FORM — REAL SOS",
+                "created_at": signal.created_at.isoformat(),
             }
         })
 
-        return {"status": "received", "signal_id": signal.id, "priority": signal.priority_level}
+        print(f"[FormSOS] NEW REAL SOS from Google Form: priority={signal.priority_level}, location={signal.location_extracted}, survivors={signal.survivor_count_estimate}")
+
+        return {
+            "status": "received",
+            "signal_id": signal.id,
+            "priority": signal.priority_level,
+            "priority_score": signal.priority_score,
+            "language_detected": signal.language_detected,
+            "survivor_estimate": signal.survivor_count_estimate,
+            "message": "SOS received and dispatched to rescue dashboard"
+        }
 
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Form submission failed: {e}")
+
+
+@router.get("/submit-form")
+async def verify_form_webhook():
+    """Make.com pings this GET endpoint to verify the webhook is alive"""
+    return {"status": "ok", "webhook": "google_form_sos_intake", "ready": True}

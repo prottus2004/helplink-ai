@@ -13,18 +13,19 @@ export default function CommandHeader() {
   }, []);
 
   useEffect(() => {
-    const fetchLiveDisaster = async () => {
+    const fetchDisasterStatus = async () => {
       try {
-        const response = await fetch('/api/live/disaster-status');
+        const baseUrl = import.meta.env.VITE_API_URL || '';
+        const response = await fetch(`${baseUrl}/api/live/disaster-status`);
         const data = await response.json();
         setLiveDisaster(data);
       } catch (err) {
-        console.warn('Failed to fetch live disaster status:', err);
+        console.error('[CommandHeader] Disaster status fetch failed:', err);
       }
     };
 
-    fetchLiveDisaster();
-    const interval = setInterval(fetchLiveDisaster, 120000);
+    fetchDisasterStatus();
+    const interval = setInterval(fetchDisasterStatus, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -53,7 +54,7 @@ export default function CommandHeader() {
         </div>
         {liveDisaster?.active_india_disaster ? (
           <div className="text-red-400 text-[10px] tracking-widest uppercase font-black bg-red-950/40 px-2 py-0.5 rounded border border-red-900/30">
-            LIVE: {liveDisaster.critical_count} ACTIVE DISASTER(S) IN INDIA
+            LIVE: {liveDisaster.total_india_count} ACTIVE DISASTER(S) IN INDIA
           </div>
         ) : (
           <div className="text-green-400 text-[10px] tracking-widest uppercase font-bold">

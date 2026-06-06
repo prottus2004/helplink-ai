@@ -11,6 +11,10 @@
     {
       "source": "/health",
       "destination": "https://helplink-backend-production.up.railway.app/health"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [

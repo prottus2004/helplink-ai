@@ -123,12 +123,12 @@ class SMSSimulateRequest(BaseModel):
 
 
 class FormSOSRequest(BaseModel):
-    raw_message: str = Field(..., description="Main free-text message submitted via form")
-    location_text: str = Field("", description="Free-text location (village, landmark, district)")
-    person_count: Optional[int] = Field(None, description="Estimated number of people needing help")
-    language_hint: str = Field("auto", description="Optional language hint or 'auto' for detection")
-    contact: str = Field("", description="Optional contact phone or email provided by submitter")
-    source: str = Field("google_form", description="Data source identifier")
+    name: Optional[str] = Field("", description="Submitter name")
+    phone: Optional[str] = Field("", description="Submitter phone number")
+    message: str = Field(..., description="Main free-text SOS message from form")
+    location: Optional[str] = Field("", description="Free-text location (village, landmark, district)")
+    person_count: Optional[int] = Field(1, description="Estimated number of people needing help")
+    language: Optional[str] = Field("auto", description="Language hint or 'auto' for detection")
 
 class OperationsSummary(BaseModel):
     total_sos: int
