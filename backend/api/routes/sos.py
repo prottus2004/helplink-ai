@@ -91,6 +91,80 @@ async def get_sos_feed(db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     return result.scalars().all()
 
+@router.post("/submit-form")
+async def submit_from_form(payload: FormSOSRequest, db: AsyncSession = Depends(get_db)):
+    """Receives SOS from Google Form via Make.com webhook"""
+    try:
+        full_message = payload.message
+        if payload.location:
+            full_message = f"{full_message}. Location: {payload.location}"
+        if payload.person_count and payload.person_count > 1:
+            full_message = f"{full_message}. {payload.person_count} people need help."
+
+        nlp_result = nlp_engine.classify_sos(full_message)
+
+        if payload.language and payload.language.lower() != "auto":
+            nlp_result["language_detected"] = payload.language
+
+        signal = SOSSignal(
+            source="google_form",
+            raw_message=full_message,
+            language_detected=nlp_result.get("language_detected", "English"),
+            language_confidence=nlp_result.get("language_confidence", 0.9),
+            has_survivor_signal=True,
+            survivor_count_estimate=payload.person_count or nlp_result.get("survivor_count_estimate", 1),
+            location_extracted=payload.location or nlp_result.get("location_extracted", "Unknown"),
+            latitude=0.0,
+            longitude=0.0,
+            priority_score=max(nlp_result.get("priority_score", 50), 50),
+            priority_level=nlp_result.get("priority_level", "HIGH"),
+            data_source="Google Form (Public SOS)",
+            is_verified=False,
+            created_at=datetime.now(timezone.utc),
+            processed_at=datetime.now(timezone.utc),
+        )
+
+        db.add(signal)
+        await db.commit()
+        await db.refresh(signal)
+
+        await manager.broadcast({
+            "type": "new_sos",
+            "data": {
+                "id": signal.id,
+                "raw_message": signal.raw_message,
+                "priority_level": signal.priority_level,
+                "priority_score": signal.priority_score,
+                "location_extracted": signal.location_extracted,
+                "language_detected": signal.language_detected,
+                "survivor_count_estimate": signal.survivor_count_estimate,
+                "source": signal.source,
+                "created_at": signal.created_at.isoformat(),
+            }
+        })
+
+        print(f"[FormSOS] NEW REAL SOS from Google Form: priority={signal.priority_level}, location={signal.location_extracted}, survivors={signal.survivor_count_estimate}")
+
+        return {
+            "status": "received",
+            "signal_id": signal.id,
+            "priority": signal.priority_level,
+            "priority_score": signal.priority_score,
+            "language_detected": signal.language_detected,
+            "survivor_estimate": signal.survivor_count_estimate,
+            "message": "SOS received and dispatched to rescue dashboard"
+        }
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Form submission failed: {e}")
+
+
+@router.get("/submit-form")
+async def verify_form_webhook():
+    """Make.com pings this GET endpoint to verify the webhook is alive"""
+    return {"status": "ok", "webhook": "google_form_sos_intake", "ready": True}
+
 @router.get("/{id}", response_model=SOSSignalResponse)
 async def get_sos_detail(id: int, db: AsyncSession = Depends(get_db)):
     """
@@ -99,7 +173,7 @@ async def get_sos_detail(id: int, db: AsyncSession = Depends(get_db)):
     stmt = select(SOSSignal).where(SOSSignal.id == id)
     result = await db.execute(stmt)
     signal = result.scalar_one_or_none()
-    
+
     if not signal:
         raise HTTPException(status_code=404, detail="SOS distress signal not found")
     return signal
@@ -162,78 +236,3 @@ async def dismiss_sos(id: int, db: AsyncSession = Depends(get_db)):
     await manager.broadcast(ws_event)
     
     return {"status": "success", "message": f"SOS distress signal #{id} dismissed successfully."}
-
-
-@router.post("/submit-form")
-async def submit_from_form(payload: FormSOSRequest, db: AsyncSession = Depends(get_db)):
-    """Receives SOS from Google Form via Make.com webhook"""
-    try:
-        full_message = payload.message
-        if payload.location:
-            full_message = f"{full_message}. Location: {payload.location}"
-        if payload.person_count and payload.person_count > 1:
-            full_message = f"{full_message}. {payload.person_count} people need help."
-
-        nlp_result = nlp_engine.classify_sos(full_message)
-
-        if payload.language and payload.language.lower() != "auto":
-            nlp_result["language_detected"] = payload.language
-
-        signal = SOSSignal(
-            source="google_form",
-            raw_message=full_message,
-            language_detected=nlp_result.get("language_detected", "English"),
-            language_confidence=nlp_result.get("language_confidence", 0.9),
-            has_survivor_signal=True,
-            survivor_count_estimate=payload.person_count or nlp_result.get("survivor_count_estimate", 1),
-            location_extracted=payload.location or nlp_result.get("location_extracted", "Unknown"),
-            latitude=0.0,
-            longitude=0.0,
-            priority_score=max(nlp_result.get("priority_score", 50), 50),
-            priority_level=nlp_result.get("priority_level", "HIGH"),
-            data_source="Google Form (Public SOS)",
-            is_verified=False,
-            created_at=datetime.now(timezone.utc),
-            processed_at=datetime.now(timezone.utc),
-        )
-
-        db.add(signal)
-        await db.commit()
-        await db.refresh(signal)
-
-        await manager.broadcast({
-            "type": "new_sos",
-            "data": {
-                "id": signal.id,
-                "message": signal.raw_message[:100],
-                "priority": signal.priority_level,
-                "priority_score": signal.priority_score,
-                "location": signal.location_extracted,
-                "language": signal.language_detected,
-                "survivors": signal.survivor_count_estimate,
-                "source": "GOOGLE FORM — REAL SOS",
-                "created_at": signal.created_at.isoformat(),
-            }
-        })
-
-        print(f"[FormSOS] NEW REAL SOS from Google Form: priority={signal.priority_level}, location={signal.location_extracted}, survivors={signal.survivor_count_estimate}")
-
-        return {
-            "status": "received",
-            "signal_id": signal.id,
-            "priority": signal.priority_level,
-            "priority_score": signal.priority_score,
-            "language_detected": signal.language_detected,
-            "survivor_estimate": signal.survivor_count_estimate,
-            "message": "SOS received and dispatched to rescue dashboard"
-        }
-
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Form submission failed: {e}")
-
-
-@router.get("/submit-form")
-async def verify_form_webhook():
-    """Make.com pings this GET endpoint to verify the webhook is alive"""
-    return {"status": "ok", "webhook": "google_form_sos_intake", "ready": True}
