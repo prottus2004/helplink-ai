@@ -14,7 +14,6 @@ export const useHelpLinkStore = create((set) => ({
     lives_estimated: 0,
     last_updated: '--'
   },
-  activeScenario: null,
   isLive: false,
   timeline: [],
   focusedLocation: null,
@@ -104,6 +103,5 @@ export const useHelpLinkStore = create((set) => ({
   }),
 
   setSummary: (summaryData) => set({ summary: summaryData }),
-  setScenario: (scenarioData) => set({ activeScenario: scenarioData }),
   setLive: (liveStatus) => set({ isLive: liveStatus })
 }));

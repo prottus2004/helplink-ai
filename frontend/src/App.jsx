@@ -5,8 +5,6 @@ import SOSInbox from './components/SOS/SOSInbox';
 import RescueMap from './components/Map/RescueMap';
 import AlertFeed from './components/Dashboard/AlertFeed';
 import TeamTracker from './components/Dashboard/TeamTracker';
-import DemoController from './components/Demo/DemoController';
-import ScenarioPanel from './components/Demo/ScenarioPanel';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useRescueData } from './hooks/useRescueData';
 import { useHelpLinkStore } from './store/useHelpLinkStore';
@@ -17,7 +15,7 @@ export default function App() {
   useWebSocket();
   
   const { fetchAllData } = useRescueData();
-  const { summary, activeScenario } = useHelpLinkStore();
+  const { summary } = useHelpLinkStore();
   const [showSplash, setShowSplash] = useState(true);
 
   // Load initial database metrics on EOC launch
@@ -103,13 +101,10 @@ export default function App() {
           <RescueMap />
         </section>
 
-        {/* Column 4 (25%): Live Feeds, Unit Trackers, and Showcase tour controls */}
+        {/* Column 4 (25%): Live Feeds and Unit Trackers */}
         <section className="lg:col-span-1 h-full min-h-0 flex flex-col gap-4">
           <div className="flex-1 min-h-0">
             <AlertFeed />
-          </div>
-          <div className="h-44">
-            <DemoController />
           </div>
           <div className="h-48">
             <TeamTracker />
@@ -156,7 +151,7 @@ export default function App() {
 
           <StatCard
             label="Estimated Coverage"
-            value={activeScenario?.id === 'wayanad' ? 92 : activeScenario?.id === 'assam' ? 88 : activeScenario?.id === 'bihar' ? 85 : 100}
+            value={100}
             icon="🛰️"
             color="green"
             trend="100% SAR"
@@ -164,11 +159,6 @@ export default function App() {
 
         </div>
       </div>
-
-      {/* 4. Bottom Scenario swapper console drawer */}
-      <footer className="p-4 border-t border-gray-800 bg-gray-950">
-        <ScenarioPanel />
-      </footer>
 
     </div>
   );

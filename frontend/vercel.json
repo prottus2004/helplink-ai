@@ -1,28 +1,25 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://helplink-backend-production.up.railway.app/api/$1"
+      "source": "/api/:path*",
+      "destination": "https://helplink-backend-production.up.railway.app/api/:path*"
     },
     {
-      "source": "/ws/(.*)",
-      "destination": "https://helplink-backend-production.up.railway.app/ws/$1"
+      "source": "/ws",
+      "destination": "https://helplink-backend-production.up.railway.app/ws"
     },
     {
-      "source": "/health",
-      "destination": "https://helplink-backend-production.up.railway.app/health"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/((?!api|ws).*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
     {
-      "source": "/ws/(.*)",
+      "source": "/api/(.*)",
       "headers": [
-        { "key": "Upgrade", "value": "websocket" },
-        { "key": "Connection", "value": "upgrade" }
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
       ]
     }
   ]

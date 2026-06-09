@@ -5,7 +5,7 @@ import { languageMap } from '../../utils/languageMap';
 import SOSCard from './SOSCard';
 
 export default function SOSInbox() {
-  const { sosSignals, activeScenario } = useHelpLinkStore();
+  const { sosSignals } = useHelpLinkStore();
   const { submitManualSOS } = useRescueData();
 
   // Filters State
@@ -21,18 +21,10 @@ export default function SOSInbox() {
   const [manualLng, setManualLng] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Auto-generate coordinates near the active scenario center
+  // Auto-generate coordinates near Wayanad (default region)
   const fillMockCoordinates = () => {
-    let lat = 11.6854;
-    let lng = 76.1320; // Wayanad default
-    
-    if (activeScenario?.id === 'assam') {
-      lat = 26.2006;
-      lng = 92.9376;
-    } else if (activeScenario?.id === 'bihar') {
-      lat = 26.1197;
-      lng = 85.5160;
-    }
+    const lat = 11.6854;
+    const lng = 76.1320;
 
     // Add tiny randomized offsets
     const latOffset = (Math.random() - 0.5) * 0.05;
@@ -241,7 +233,7 @@ export default function SOSInbox() {
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500 text-center py-16 px-4">
             <span className="text-3xl mb-1.5">📂</span>
             <p className="text-xs font-bold uppercase tracking-wider">NO INCIDENTS DETECTED</p>
-            <p className="text-[10px] text-gray-600 mt-1">Adjust filters or load a different scenario.</p>
+            <p className="text-[10px] text-gray-600 mt-1">Adjust filters or wait for incoming signals.</p>
           </div>
         ) : (
           filteredSignals.map((sig) => (

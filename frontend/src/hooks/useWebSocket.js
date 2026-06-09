@@ -4,15 +4,14 @@ import { useHelpLinkStore } from '../store/useHelpLinkStore';
 export const useWebSocket = () => {
   const ws = useRef(null);
   const reconnectTimeout = useRef(null);
-  const { 
-    setLive, 
-    addNewSOS, 
-    removeSOS, 
-    verifySOS, 
-    updateTeam, 
-    setSummary, 
+  const {
+    setLive,
+    addNewSOS,
+    removeSOS,
+    verifySOS,
+    updateTeam,
+    setSummary,
     addTimelineEvent,
-    setScenario,
     setSatelliteZones,
     setCellularAnomalies
   } = useHelpLinkStore();
@@ -100,13 +99,7 @@ export const useWebSocket = () => {
           case 'cellular_anomalies':
             setCellularAnomalies(data);
             break;
-            
-          case 'scenario_loaded':
-            setScenario(data);
-            // Force window reload or dynamic trigger to update initial components
-            // App.jsx will listen to this state and fetch scenario-specific layers
-            break;
-            
+
           default:
             console.log(`[WebSocket] Unhandled payload type: ${type}`);
         }

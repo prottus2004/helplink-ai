@@ -27,8 +27,6 @@ function ScenarioFlyTo({ center, zoom }) {
 
 export const SCENARIO_VIEWS = {
   wayanad: { center: [11.6854, 76.1320], zoom: 10 },
-  assam: { center: [26.2006, 92.9376], zoom: 8 },
-  bihar: { center: [26.1197, 85.5160], zoom: 9 },
 };
 
 // Handles temporary focus actions from other dashboard widgets
@@ -47,11 +45,10 @@ function FocusedLocationFlyTo() {
 
 export default function RescueMap() {
   const { 
-    sosSignals, 
-    satelliteZones, 
-    cellularAnomalies, 
-    rescueTeams, 
-    activeScenario 
+    sosSignals,
+    satelliteZones,
+    cellularAnomalies,
+    rescueTeams
   } = useHelpLinkStore();
   
   const { dispatchTeam } = useRescueData();
@@ -85,10 +82,7 @@ export default function RescueMap() {
     return () => clearInterval(interval);
   }, []);
 
-  const scenarioKey = typeof activeScenario === 'string'
-    ? activeScenario
-    : activeScenario?.id;
-  const scenarioView = SCENARIO_VIEWS[scenarioKey] || SCENARIO_VIEWS.wayanad;
+  const scenarioView = SCENARIO_VIEWS.wayanad;
 
   // Custom DivIcon for SOS markers incorporating blinking statuses and survivor count numbers
   const createSOSIcon = (sig) => {

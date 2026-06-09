@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s https://helplink-backend-production.up.railway.app/health)",
+      "Bash(railway up --detach)",
+      "Bash(railway logs --service helplink-backend)",
+      "Bash(railway logs)",
+      "Bash(railway logs --service helplink-backend --limit 50)",
+      "Bash(railway status)",
+      "Bash(curl -v https://helplink-backend-production.up.railway.app/health)",
+      "Bash(railway service helplink-backend)",
+      "Bash(railway show helplink-backend)",
+      "Bash(railway logs b9186fd9-329c-42a4-8248-48d6f72bd84d)",
+      "Bash(curl -s --connect-timeout 10 https://helplink-backend-production.up.railway.app/health)",
+      "Bash(curl -s https://helplink-backend-production.up.railway.app/api/live/disasters)",
+      "Bash(curl -X POST https://helplink-backend-production.up.railway.app/api/sos/submit -H \"Content-Type: application/json\" -d '{\"\"raw_message\"\":\"\"Bachao paani aa gaya 5 log phanse hain\"\",\"\"source\"\":\"\"test\"\"}')",
+      "Bash(curl -s https://helplink-backend-production.up.railway.app/api/live/data-status)",
+      "Bash(curl -s --retry 3 --connect-timeout 15 https://helplink-backend-production.up.railway.app/api/live/data-status)",
+      "Bash(curl -s --retry 3 --connect-timeout 15 -X POST https://helplink-backend-production.up.railway.app/api/sos/submit -H \"Content-Type: application/json\" -d '{\"\"raw_message\"\":\"\"Bachao paani aa gaya 5 log phanse hain\"\",\"\"source\"\":\"\"test\"\"}')",
+      "Bash(curl -s --retry 3 --connect-timeout 15 -X POST https://helplink-backend-production.up.railway.app/api/sos/submit -H \"Content-Type: application/json\" -d '{\"\"message\"\":\"\"Bachao paani aa gaya 5 log phanse hain\"\",\"\"latitude\"\":8.5,\"\"longitude\"\":81.0}')",
+      "Bash(npm run build)",
+      "Bash(npx vercel --prod --yes)",
+      "Read(//c/Users/prott/**)",
+      "Bash(vercel whoami)",
+      "Bash(npx vercel --version)"
+    ]
+  }
+}

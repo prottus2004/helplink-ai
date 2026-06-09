@@ -2,8 +2,8 @@ import axios from 'axios';
 import { useHelpLinkStore } from '../store/useHelpLinkStore';
 import { useCallback } from 'react';
 
-// Relative paths leverage Vite dev server proxy to target http://localhost:8000
-const API_BASE = '/api';
+// Production: use Railway API URL from env. Local dev: Vite proxy forwards /api to localhost:8000
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export const useRescueData = () => {
   const {
@@ -18,7 +18,7 @@ export const useRescueData = () => {
 
   const fetchSummary = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/alerts/summary`);
+      const res = await axios.get(`${API_BASE}/api/alerts/summary`);
       setSummary(res.data);
       return res.data;
     } catch (err) {
@@ -28,7 +28,7 @@ export const useRescueData = () => {
 
   const fetchSOSFeed = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/sos/feed`);
+      const res = await axios.get(`${API_BASE}/api/sos/feed`);
       setSOSSignals(res.data);
       return res.data;
     } catch (err) {
@@ -38,7 +38,7 @@ export const useRescueData = () => {
 
   const fetchTeams = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/teams/`);
+      const res = await axios.get(`${API_BASE}/api/teams/`);
       setRescueTeams(res.data);
       return res.data;
     } catch (err) {
@@ -48,7 +48,7 @@ export const useRescueData = () => {
 
   const fetchTimeline = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/alerts/timeline`);
+      const res = await axios.get(`${API_BASE}/api/alerts/timeline`);
       setTimeline(res.data);
       return res.data;
     } catch (err) {
@@ -58,10 +58,10 @@ export const useRescueData = () => {
 
   const fetchMapLayers = useCallback(async () => {
     try {
-      const satRes = await axios.get(`${API_BASE}/map/satellite-zones`);
+      const satRes = await axios.get(`${API_BASE}/api/map/satellite-zones`);
       setSatelliteZones(satRes.data);
       
-      const cellRes = await axios.get(`${API_BASE}/map/cellular-anomalies`);
+      const cellRes = await axios.get(`${API_BASE}/api/map/cellular-anomalies`);
       setCellularAnomalies(cellRes.data);
       
       // Return map coordinates
@@ -88,7 +88,7 @@ export const useRescueData = () => {
   // Dispatch control actions
   const dispatchTeam = async (teamId, signalId) => {
     try {
-      const res = await axios.post(`${API_BASE}/teams/dispatch`, {
+      const res = await axios.post(`${API_BASE}/api/teams/dispatch`, {
         team_id: teamId,
         signal_id: signalId
       });
@@ -102,7 +102,7 @@ export const useRescueData = () => {
 
   const updateTeamStatus = async (teamId, newStatus) => {
     try {
-      const res = await axios.put(`${API_BASE}/teams/${teamId}/status`, {
+      const res = await axios.put(`${API_BASE}/api/teams/${teamId}/status`, {
         status: newStatus
       });
       return res.data;
@@ -114,7 +114,7 @@ export const useRescueData = () => {
 
   const submitManualSOS = async (message, lat, lng, language = null) => {
     try {
-      const res = await axios.post(`${API_BASE}/sos/submit`, {
+      const res = await axios.post(`${API_BASE}/api/sos/submit`, {
         message,
         latitude: lat,
         longitude: lng,
@@ -131,7 +131,7 @@ export const useRescueData = () => {
 
   const verifySOSSignal = async (id) => {
     try {
-      const res = await axios.put(`${API_BASE}/sos/${id}/verify`);
+      const res = await axios.put(`${API_BASE}/api/sos/${id}/verify`);
       return res.data;
     } catch (err) {
       console.error('[API ERROR] SOS verification update failed:', err);
@@ -141,7 +141,7 @@ export const useRescueData = () => {
 
   const dismissSOSSignal = async (id) => {
     try {
-      const res = await axios.delete(`${API_BASE}/sos/${id}`);
+      const res = await axios.delete(`${API_BASE}/api/sos/${id}`);
       return res.data;
     } catch (err) {
       console.error('[API ERROR] SOS dismissal request failed:', err);
