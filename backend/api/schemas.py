@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional, List
 
@@ -129,6 +129,20 @@ class FormSOSRequest(BaseModel):
     location: Optional[str] = Field("", description="Free-text location (village, landmark, district)")
     person_count: Optional[int] = Field(1, description="Estimated number of people needing help")
     language: Optional[str] = Field("auto", description="Language hint or 'auto' for detection")
+
+    @field_validator("person_count", mode="before")
+    @classmethod
+    def parse_person_count(cls, v):
+        if v is None or v == "":
+            return 1
+        if isinstance(v, str):
+            # Try to extract the first number from the string
+            import re
+            match = re.search(r'\d+', v)
+            if match:
+                return int(match.group())
+            return 1
+        return v
 
 class OperationsSummary(BaseModel):
     total_sos: int
