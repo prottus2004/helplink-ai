@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 import sys
 import os
+import httpx
 from typing import List
 
 # Ensure backend directory is in path
@@ -91,6 +92,75 @@ async def get_sos_feed(db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     return result.scalars().all()
 
+async def geocode_location(location_name: str) -> tuple[float, float]:
+    """
+    Geocodes a free-text location string to latitude/longitude in India.
+    Uses a fast local lookup for common districts, falls back to Nominatim OSM API,
+    and defaults to the geographic center of India (Nagpur) on failure.
+    """
+    local_coords = {
+        "wayanad": (11.6854, 76.1320),
+        "kolkata": (22.5726, 88.3639),
+        "behala": (22.4988, 88.3158),
+        "shakuntala": (22.4988, 88.3158),
+        "west bengal": (22.9868, 87.8550),
+        "kerala": (10.8505, 76.2711),
+        "assam": (26.2006, 92.9376),
+        "bihar": (25.0961, 85.3131),
+        "patna": (25.5941, 85.1376),
+        "chennai": (13.0827, 80.2707),
+        "mumbai": (19.0760, 72.8777),
+        "delhi": (28.7041, 77.1025),
+        "bengaluru": (12.9716, 77.5946),
+        "bangalore": (12.9716, 77.5946),
+        "cachar": (24.8333, 92.7789),
+        "dhubri": (26.0207, 89.9736),
+        "barpeta": (26.3275, 90.9808),
+        "nagaon": (26.3484, 92.6838),
+        "karimganj": (24.8649, 92.3590),
+        "jorhat": (26.7509, 94.2037),
+        "dibrugarh": (27.4728, 94.9120),
+        "morigaon": (26.2625, 92.3389),
+        "goalpara": (26.1744, 90.6278),
+        "dhemaji": (27.4750, 94.5750),
+        "lakhimpur": (27.2341, 94.0989),
+    }
+
+    name_lower = location_name.lower()
+    
+    # Check local dictionary
+    for key, coords in local_coords.items():
+        if key in name_lower:
+            print(f"[Geocoder] Local match: '{location_name}' -> '{key}': {coords}")
+            return coords
+
+    # Call Nominatim OpenStreetMap API
+    try:
+        headers = {"User-Agent": "HelpLink-Emergency-Coordination-Portal/1.0"}
+        params = {"q": f"{location_name}, India", "format": "json", "limit": 1}
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params=params,
+                headers=headers,
+                timeout=5.0
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data and len(data) > 0:
+                    lat = float(data[0]["lat"])
+                    lon = float(data[0]["lon"])
+                    print(f"[Geocoder] Nominatim match for '{location_name}': {lat}, {lon}")
+                    return lat, lon
+    except Exception as e:
+        print(f"[Geocoder WARNING] Nominatim lookup failed: {e}")
+
+    # Fallback to geographical center of India (Nagpur)
+    fallback = (21.1458, 79.0882)
+    print(f"[Geocoder] Fallback to default India center for '{location_name}': {fallback}")
+    return fallback
+
 @router.post("/submit-form")
 async def submit_from_form(payload: FormSOSRequest, db: AsyncSession = Depends(get_db)):
     """Receives SOS from Google Form via Make.com webhook"""
@@ -106,6 +176,10 @@ async def submit_from_form(payload: FormSOSRequest, db: AsyncSession = Depends(g
         if payload.language and payload.language.lower() != "auto":
             nlp_result["language_detected"] = payload.language
 
+        # Dynamically geocode the location string
+        loc_name = payload.location or nlp_result.get("location_extracted", "Unknown")
+        lat, lon = await geocode_location(loc_name)
+
         signal = SOSSignal(
             source="google_form",
             raw_message=full_message,
@@ -113,9 +187,9 @@ async def submit_from_form(payload: FormSOSRequest, db: AsyncSession = Depends(g
             language_confidence=nlp_result.get("language_confidence", 0.9),
             has_survivor_signal=True,
             survivor_count_estimate=payload.person_count or nlp_result.get("survivor_count_estimate", 1),
-            location_extracted=payload.location or nlp_result.get("location_extracted", "Unknown"),
-            latitude=0.0,
-            longitude=0.0,
+            location_extracted=loc_name,
+            latitude=lat,
+            longitude=lon,
             priority_score=max(nlp_result.get("priority_score", 50), 50),
             priority_level=nlp_result.get("priority_level", "HIGH"),
             data_source="Google Form (Public SOS)",
@@ -138,6 +212,8 @@ async def submit_from_form(payload: FormSOSRequest, db: AsyncSession = Depends(g
                 "location_extracted": signal.location_extracted,
                 "language_detected": signal.language_detected,
                 "survivor_count_estimate": signal.survivor_count_estimate,
+                "latitude": signal.latitude,
+                "longitude": signal.longitude,
                 "source": signal.source,
                 "created_at": signal.created_at.isoformat(),
             }
