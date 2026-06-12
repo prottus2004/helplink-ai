@@ -9,6 +9,7 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { useRescueData } from './hooks/useRescueData';
 import { useHelpLinkStore } from './store/useHelpLinkStore';
 import EmergencyReport from './pages/EmergencyReport';
+import ShowcaseTour from './components/Demo/ShowcaseTour';
 
 export default function App() {
   // Mount WebSocket Pipeline
@@ -17,6 +18,7 @@ export default function App() {
   const { fetchAllData } = useRescueData();
   const { summary } = useHelpLinkStore();
   const [showSplash, setShowSplash] = useState(true);
+  const [showTour, setShowTour] = useState(false);
 
   // Load initial database metrics on EOC launch
   useEffect(() => {
@@ -30,6 +32,75 @@ export default function App() {
     }, 2000);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleExportBrief = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || '';
+
+      // Fetch all data needed for the brief
+      const [summaryData, disasters, feed] = await Promise.all([
+        fetch(`${API_BASE}/api/alerts/summary`).then(r => r.json()),
+        fetch(`${API_BASE}/api/live/disasters`).then(r => r.json()),
+        fetch(`${API_BASE}/api/sos/feed`).then(r => r.json()),
+      ]);
+
+      const now = new Date();
+      const indiaDisaster = disasters?.india_events?.[0];
+
+      const briefText = `
+HELPLINK AI — RESCUE OPERATIONS BRIEF
+Generated: ${now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
+System: HelpLink AI v1.0 | Samsung Solve for Tomorrow 2026
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ACTIVE DISASTER STATUS
+${indiaDisaster
+  ? `Event: ${indiaDisaster.name}
+Alert Level: ${indiaDisaster.alert}
+Location: ${indiaDisaster.lat?.toFixed(4)}°N, ${indiaDisaster.lng?.toFixed(4)}°E
+Source: GDACS Live API (EU)`
+  : 'No active India disaster events currently tracked by GDACS.'}
+
+OPERATIONS SUMMARY
+Total SOS Received: ${summaryData?.total_sos || 0}
+Critical Hotspots: ${summaryData?.critical_count || 0}
+High Priority Zones: ${summaryData?.high_count || 0}
+Estimated Survivors: ${summaryData?.lives_estimated || 0}
+Teams Deployed: ${summaryData?.teams_deployed || 0}
+
+RECENT SOS SIGNALS (Last 5)
+${(Array.isArray(feed) ? feed.slice(0, 5) : [])
+  .map((s, i) =>
+    `${i + 1}. [${s.priority_level}] ${s.language_detected || 'Unknown'} | ` +
+    `Survivors: ${s.survivor_count_estimate || 1} | ` +
+    `${(s.raw_message || '').substring(0, 60)}...`)
+  .join('\n') || 'No SOS signals recorded in this session.'}
+
+DATA SOURCES ACTIVE
+- GDACS Disaster Alerts (EU) — LIVE
+- ESA Sentinel-1 SAR Satellite — CONNECTED
+- OpenCelliD Tower Database — CONNECTED
+- Twitter/X SOS Keyword Feed — CONNECTED
+- Google Form Emergency Intake — ACTIVE
+
+HELPLINK AI | NDRF Coordination Interface
+Backend: ${API_BASE || 'localhost:8000'}
+GitHub: https://github.com/prottus2004/helplink-ai
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      `.trim();
+
+      const blob = new Blob([briefText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HelpLink_Brief_${now.toISOString().slice(0, 10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Export failed — check that the backend is running.');
+    }
+  };
 
   if (showSplash) {
     return (
@@ -86,7 +157,7 @@ export default function App() {
     <div className="w-screen h-screen flex flex-col bg-gray-950 text-gray-100 overflow-hidden">
       
       {/* 1. Global Navigation Command Header */}
-      <CommandHeader />
+      <CommandHeader onStartTour={() => setShowTour(true)} onExportBrief={handleExportBrief} />
 
       {/* 2. Main Dashboard Split Arena */}
       <main className="flex-1 min-h-0 p-4 grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -160,6 +231,7 @@ export default function App() {
         </div>
       </div>
 
+      {showTour && <ShowcaseTour onClose={() => setShowTour(false)} />}
     </div>
   );
 }

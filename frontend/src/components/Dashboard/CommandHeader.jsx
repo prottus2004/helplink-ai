@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHelpLinkStore } from '../../store/useHelpLinkStore';
 
-export default function CommandHeader() {
+export default function CommandHeader({ onStartTour, onExportBrief }) {
   const { isLive } = useHelpLinkStore();
   const [time, setTime] = useState(new Date());
   const [liveDisaster, setLiveDisaster] = useState(null);
@@ -65,6 +65,32 @@ export default function CommandHeader() {
 
       {/* Right: Socket Status */}
       <div className="flex items-center gap-4">
+        <button
+          onClick={onStartTour}
+          style={{
+            background: 'rgba(29,114,245,0.15)',
+            border: '1px solid rgba(29,114,245,0.3)',
+            color: '#5fa8f5', borderRadius: 6,
+            padding: '5px 14px', fontSize: 11,
+            fontWeight: 700, cursor: 'pointer',
+            letterSpacing: '0.08em', textTransform: 'uppercase'
+          }}
+        >
+          ▶ START DEMO TOUR
+        </button>
+        <button
+          onClick={onExportBrief}
+          style={{
+            background: 'rgba(6,214,160,0.12)',
+            border: '1px solid rgba(6,214,160,0.3)',
+            color: '#06d6a0', borderRadius: 6,
+            padding: '5px 14px', fontSize: 11,
+            fontWeight: 700, cursor: 'pointer',
+            letterSpacing: '0.08em', textTransform: 'uppercase'
+          }}
+        >
+          📄 EXPORT BRIEF
+        </button>
         {/* Connection Beacon */}
         <div className="flex items-center gap-2 bg-gray-950 px-3 py-1.5 rounded border border-gray-800">
           <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-blink'}`} />

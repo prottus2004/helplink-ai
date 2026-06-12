@@ -1,0 +1,14 @@
+[
+  {
+    "zone_name": "TestZone",
+    "latitude": 22.485,
+    "longitude": 88.289,
+    "priority_score": 74.95,
+    "priority_level": "HIGH",
+    "recommended_team": "Water Rescue (NDRF Boat)",
+    "survivors_estimate": 6,
+    "signal_count": 2,
+    "water_depth": 2.8,
+    "severity": 0.85
+  }
+]

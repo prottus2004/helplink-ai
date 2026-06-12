@@ -14,6 +14,7 @@ from websocket.manager import manager
 from api.routes import sos, map_data, rescue_teams, alerts
 from api.routes.live_data import router as live_data_router
 from config import APP_HOST, APP_PORT, DEMO_MODE, WEBSOCKET_REFRESH_INTERVAL, PRODUCTION_MODE
+from simulation.scenarios import load_scenario, SCENARIOS
 
 # Initialize background scheduler for real-time simulated updates
 scheduler = AsyncIOScheduler()
@@ -131,46 +132,62 @@ app.include_router(live_data_router, tags=["Live Disaster Feeds"])
 
 # Direct load scenario controller for simulation control panels
 @app.post("/api/demo/load-scenario/{scenario_id}")
-async def api_load_scenario(scenario_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Triggers scenario switching on the fly.
-    Clears all logs and loads either Kerala landslide, Assam, or Bihar floods.
-    """
-    # DISABLED IN PRODUCTION
-    if PRODUCTION_MODE:
-        raise HTTPException(status_code=410, detail="Cannot load demo scenarios in production mode. Simulation endpoints disabled.")
-
+async def api_load_scenario(
+    scenario_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Load a pre-built disaster scenario into the database for demo purposes"""
     try:
-        scenario = await load_scenario(scenario_id, db)
-        
-        # Broadcast switch notification to all sockets
-        ws_event = {
+        result = await load_scenario(scenario_id, db)
+
+        # Broadcast to all connected dashboards
+        await manager.broadcast({
             "type": "scenario_loaded",
-            "data": {
-                "id": scenario.id,
-                "scenario_name": scenario.scenario_name,
-                "location": scenario.location,
-                "description": scenario.description,
-                "severity": scenario.severity,
-                "total_affected": scenario.total_affected
-            }
-        }
-        await manager.broadcast(ws_event)
-        
-        return {
-            "status": "success",
-            "message": f"Scenario '{scenario.scenario_name}' loaded successfully.",
-            "scenario": {
-                "id": scenario.id,
-                "name": scenario.scenario_name
-            }
-        }
+            "data": result
+        })
+
+        return result
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        await db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail=f"Scenario swap execution failed: {str(e)}"
-        )
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"Failed to load scenario: {e}")
+
+
+@app.get("/api/demo/scenarios")
+async def list_scenarios():
+    """List available demo scenarios"""
+    return [
+        {
+            "id": k,
+            "name": v["scenario_name"],
+            "location": v["location"],
+            "severity": v["severity"],
+            "total_affected": v["total_affected"],
+            "center_lat": v["center_lat"],
+            "center_lng": v["center_lng"],
+            "zoom": v["zoom"],
+        }
+        for k, v in SCENARIOS.items()
+    ]
+
+
+@app.post("/api/demo/reset")
+async def reset_scenario(db: AsyncSession = Depends(get_db)):
+    """Clear all demo data and reset to blank state"""
+    from sqlalchemy import text
+    await db.execute(text("DELETE FROM sos_signals WHERE source = 'demo'"))
+    await db.execute(text("DELETE FROM satellite_zones"))
+    await db.execute(text("DELETE FROM cellular_anomalies"))
+    await db.execute(text(
+        "DELETE FROM rescue_teams WHERE team_code LIKE 'NDRF-%' "
+        "OR team_code LIKE 'SDRF-%' OR team_code LIKE 'CG-%' "
+        "OR team_code LIKE 'ARMY-%'"
+    ))
+    await db.commit()
+    await manager.broadcast({"type": "scenario_reset"})
+    return {"status": "reset", "message": "All demo data cleared"}
 
 # WebSocket connection route
 @app.websocket("/ws")

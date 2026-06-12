@@ -133,3 +133,39 @@ class PriorityEngine:
         # Sort priority clusters: CRITICAL -> HIGH -> MEDIUM -> LOW
         priority_clusters.sort(key=lambda x: x["priority_score"], reverse=True)
         return priority_clusters
+
+    def calculate_priority(self, zone_data: dict) -> dict:
+        """
+        Calculate rescue priority from the three data layers.
+        Weights: Satellite 35% + SOS density 40% + Cellular 25%
+        """
+        satellite = float(zone_data.get("satellite_severity", 0))
+        sos = float(zone_data.get("sos_signal_density", 0))
+        cellular = float(zone_data.get("cellular_anomaly_score", 0))
+
+        score = ((satellite * 0.35) + (sos * 0.40) + (cellular * 0.25)) * 100
+        score = round(min(max(score, 0), 100), 2)
+
+        if score >= 75:
+            level = "CRITICAL"
+            team_type = "Water Rescue (NDRF Boat)"
+        elif score >= 50:
+            level = "HIGH"
+            team_type = "Multi-purpose Rescue (NDRF)"
+        elif score >= 25:
+            level = "MEDIUM"
+            team_type = "Evacuation Support (SDRF)"
+        else:
+            level = "LOW"
+            team_type = "Medical Aid (Civil Defence)"
+
+        return {
+            "priority_score": score,
+            "priority_level": level,
+            "recommended_team": team_type,
+            "score_breakdown": {
+                "satellite_component": round(satellite * 35, 2),
+                "sos_component": round(sos * 40, 2),
+                "cellular_component": round(cellular * 25, 2),
+            }
+        }

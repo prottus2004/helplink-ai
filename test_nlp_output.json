@@ -1,0 +1,57 @@
+[
+  {
+    "input_lang": "en",
+    "input": "Help me drowning need rescue please flood",
+    "detected": "English",
+    "confidence": 0.8,
+    "has_survivor": true,
+    "count": 1,
+    "location": "Unknown Location",
+    "priority": 87.0,
+    "level": "CRITICAL"
+  },
+  {
+    "input_lang": "hi",
+    "input": "बचाओ मदद चाहिए बाढ़ में फँस गए हैं",
+    "detected": "English",
+    "confidence": 0.5,
+    "has_survivor": false,
+    "count": 1,
+    "location": "Unknown Location",
+    "priority": 0.0,
+    "level": "LOW"
+  },
+  {
+    "input_lang": "ml",
+    "input": "രക്ഷിക്കാൻ സഹായം വേണം",
+    "detected": "English",
+    "confidence": 0.5,
+    "has_survivor": false,
+    "count": 1,
+    "location": "Unknown Location",
+    "priority": 0.0,
+    "level": "LOW"
+  },
+  {
+    "input_lang": "ta",
+    "input": "மீட்க த தேவை",
+    "detected": "English",
+    "confidence": 0.5,
+    "has_survivor": false,
+    "count": 1,
+    "location": "Unknown Location",
+    "priority": 0.0,
+    "level": "LOW"
+  },
+  {
+    "input_lang": "bn",
+    "input": "সাহায্য প্রয়োজন",
+    "detected": "English",
+    "confidence": 0.5,
+    "has_survivor": false,
+    "count": 1,
+    "location": "Unknown Location",
+    "priority": 0.0,
+    "level": "LOW"
+  }
+]

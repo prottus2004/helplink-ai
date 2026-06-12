@@ -1,0 +1,41 @@
+[
+  {
+    "zone_name": "Sentinel-1 Detection Zone 1",
+    "center_lat": 11.436458,
+    "center_lng": 75.333185,
+    "flood_severity": 0.85,
+    "area_sqkm": 44.0,
+    "isolated_structures": 18,
+    "water_depth_estimate": 2.8,
+    "scenario_id": "test",
+    "data_source": "ESA Sentinel-1 SAR (REAL)",
+    "product_name": "S1A_IW_GRDH_1SDV_20240725T004900_20240725T004925_054910_06B02C_8680.SAFE",
+    "acquisition_date": "2024-07-25"
+  },
+  {
+    "zone_name": "Sentinel-1 Detection Zone 2",
+    "center_lat": 12.948156,
+    "center_lng": 75.631853,
+    "flood_severity": 0.69,
+    "area_sqkm": 36.0,
+    "isolated_structures": 14,
+    "water_depth_estimate": 2.2,
+    "scenario_id": "test",
+    "data_source": "ESA Sentinel-1 SAR (REAL)",
+    "product_name": "S1A_IW_GRDH_1SDV_20240725T004835_20240725T004900_054910_06B02C_3D82.SAFE",
+    "acquisition_date": "2024-07-25"
+  },
+  {
+    "zone_name": "Sentinel-1 Detection Zone 3",
+    "center_lat": 11.044313,
+    "center_lng": 77.306091,
+    "flood_severity": 0.53,
+    "area_sqkm": 28.0,
+    "isolated_structures": 10,
+    "water_depth_estimate": 1.6,
+    "scenario_id": "test",
+    "data_source": "ESA Sentinel-1 SAR (REAL)",
+    "product_name": "S1A_IW_GRDH_1SDV_20240720T004053_20240720T004118_054837_06AD9C_AC20.SAFE",
+    "acquisition_date": "2024-07-20"
+  }
+]

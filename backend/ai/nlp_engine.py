@@ -11,7 +11,7 @@ from config import NLP_MODE
 # Comprehensive dictionary of 10 Indian languages and their distress/SOS keywords
 KEYWORDS: Dict[str, list] = {
     "Hindi": ["help", "bachao", "madad", "phaanse", "doob", "paani", "sos", "bachana", "mushkil", "sankat", "fasna", "phasa"],
-    "Bengali": ["sahajya", "bachao", "madad", "dube", "jal", "bipod", "sos", "banchao", "jol", "dubeche", "banya"],
+    "Bengali": ["sahajya", "bachao", "madad", "dube", "jal", "bipod", "sos", "banchao", "jol", "dubeche", "banya", "bonna", "eshechhe"],
     "Tamil": ["udavi", "paayungal", "apathu", "tanneer", "salavungal", "thannir", "sos", "kapathu", "velam"],
     "Telugu": ["sahayam", "bachao", "madapu", "vellu", "niru", "aapada", "sos", "kapadandi", "varada", "neeru"],
     "Marathi": ["madad", "bachava", "saklya", "paani", "aapat", "sos", "vaachva", "pani", "duble"],
@@ -159,6 +159,42 @@ class NLPEngine:
             
         return "Unknown Location"
 
+    def _detect_script(self, text: str) -> str:
+        """Detect the writing script to pre-filter language candidates."""
+        # Bengali script range: U+0980–U+09FF
+        bengali_chars = sum(1 for c in text if '\u0980' <= c <= '\u09FF')
+        # Gurmukhi (Punjabi) range: U+0A00–U+0A7F
+        gurmukhi_chars = sum(1 for c in text if '\u0A00' <= c <= '\u0A7F')
+        # Gujarati range: U+0A80–U+0AFF
+        gujarati_chars = sum(1 for c in text if '\u0A80' <= c <= '\u0AFF')
+        # Devanagari (Hindi/Marathi) range: U+0900–U+097F
+        devanagari_chars = sum(1 for c in text if '\u0900' <= c <= '\u097F')
+        # Malayalam range: U+0D00–U+0D7F
+        malayalam_chars = sum(1 for c in text if '\u0D00' <= c <= '\u0D7F')
+        # Tamil range: U+0B80–U+0BFF
+        tamil_chars = sum(1 for c in text if '\u0B80' <= c <= '\u0BFF')
+        # Telugu range: U+0C00–U+0C7F
+        telugu_chars = sum(1 for c in text if '\u0C00' <= c <= '\u0C7F')
+        # Kannada range: U+0C80–U+0CFF
+        kannada_chars = sum(1 for c in text if '\u0C80' <= c <= '\u0CFF')
+
+        script_map = {
+            "Bengali": bengali_chars,
+            "Punjabi": gurmukhi_chars,
+            "Gujarati": gujarati_chars,
+            "Hindi": devanagari_chars,
+            "Marathi": devanagari_chars,
+            "Malayalam": malayalam_chars,
+            "Tamil": tamil_chars,
+            "Telugu": telugu_chars,
+            "Kannada": kannada_chars,
+        }
+
+        max_lang = max(script_map, key=script_map.get)
+        if script_map[max_lang] > 2:
+            return max_lang
+        return "unknown"
+
     def classify_sos(self, raw_message: str) -> Dict[str, Any]:
         """
         Classifies incoming SOS messages. Returns dict containing language, confidence,
@@ -175,8 +211,16 @@ class NLPEngine:
                 "priority_level": "LOW"
             }
 
-        # Step 1: Detect language using keyword frequency
+        # 1. Script detection (most reliable for non-Latin scripts)
+        script_lang = self._detect_script(raw_message)
+
+        # 2. Keyword matching (as before)
         lang, confidence = self.detect_language_keyword(raw_message)
+
+        # 3. If script detection found a clear winner, trust it over keywords
+        if script_lang != "unknown":
+            lang = script_lang
+            confidence = 1.0
 
         # Step 2: Extract survivors count and location
         survivor_estimate = self.extract_survivor_estimate(raw_message)

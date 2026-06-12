@@ -72,6 +72,15 @@ class SatelliteZone(Base):
     scenario_id = Column(String, nullable=False)  # links to demo scenario ID (e.g. "wayanad")
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    def __init__(self, **kwargs):
+        # Accept and set only known column attributes; ignore unexpected extras
+        cols = set(self.__table__.columns.keys()) if hasattr(self, '__table__') else set()
+        for k, v in kwargs.items():
+            if k in cols:
+                setattr(self, k, v)
+            else:
+                continue
+
 
 class CellularAnomaly(Base):
     __tablename__ = "cellular_anomalies"
