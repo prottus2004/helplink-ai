@@ -95,14 +95,38 @@ async def get_sos_feed(db: AsyncSession = Depends(get_db)):
 async def geocode_location(location_name: str) -> tuple[float, float]:
     """
     Geocodes a free-text location string to latitude/longitude in India.
-    Uses a fast local lookup for common districts, falls back to Nominatim OSM API,
-    and defaults to the geographic center of India (Nagpur) on failure.
+    Queries Nominatim OSM API first for precise high-resolution coordinates.
+    Falls back to a local lookup for common regions on network/API failure,
+    and defaults to the geographic center of India (Nagpur).
     """
+    # 1. Try Nominatim OpenStreetMap API first for precise search
+    try:
+        headers = {"User-Agent": "HelpLink-Emergency-Coordination-Portal/1.0"}
+        params = {"q": f"{location_name}, India", "format": "json", "limit": 1}
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params=params,
+                headers=headers,
+                timeout=5.0
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data and len(data) > 0:
+                    lat = float(data[0]["lat"])
+                    lon = float(data[0]["lon"])
+                    print(f"[Geocoder] Nominatim match for '{location_name}': {lat}, {lon}")
+                    return lat, lon
+    except Exception as e:
+        print(f"[Geocoder WARNING] Nominatim lookup failed: {e}")
+
+    # 2. Local lookup fallback on network/API failure
     local_coords = {
+        "shakuntala": (22.48508, 88.28958),
+        "behala": (22.4988, 88.3158),
         "wayanad": (11.6854, 76.1320),
         "kolkata": (22.5726, 88.3639),
-        "behala": (22.4988, 88.3158),
-        "shakuntala": (22.4988, 88.3158),
         "west bengal": (22.9868, 87.8550),
         "kerala": (10.8505, 76.2711),
         "assam": (26.2006, 92.9376),
@@ -127,36 +151,12 @@ async def geocode_location(location_name: str) -> tuple[float, float]:
     }
 
     name_lower = location_name.lower()
-    
-    # Check local dictionary
     for key, coords in local_coords.items():
         if key in name_lower:
-            print(f"[Geocoder] Local match: '{location_name}' -> '{key}': {coords}")
+            print(f"[Geocoder] Local match fallback: '{location_name}' -> '{key}': {coords}")
             return coords
 
-    # Call Nominatim OpenStreetMap API
-    try:
-        headers = {"User-Agent": "HelpLink-Emergency-Coordination-Portal/1.0"}
-        params = {"q": f"{location_name}, India", "format": "json", "limit": 1}
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://nominatim.openstreetmap.org/search",
-                params=params,
-                headers=headers,
-                timeout=5.0
-            )
-            if response.status_code == 200:
-                data = response.json()
-                if data and len(data) > 0:
-                    lat = float(data[0]["lat"])
-                    lon = float(data[0]["lon"])
-                    print(f"[Geocoder] Nominatim match for '{location_name}': {lat}, {lon}")
-                    return lat, lon
-    except Exception as e:
-        print(f"[Geocoder WARNING] Nominatim lookup failed: {e}")
-
-    # Fallback to geographical center of India (Nagpur)
+    # 3. Fallback to geographical center of India (Nagpur)
     fallback = (21.1458, 79.0882)
     print(f"[Geocoder] Fallback to default India center for '{location_name}': {fallback}")
     return fallback
